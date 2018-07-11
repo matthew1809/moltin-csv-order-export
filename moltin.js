@@ -1,5 +1,5 @@
 var exports = (module.exports = {});
-
+var toStitchLabsCSV = require("./toStitchLabsCSV");
 var toCSV = require("./toCSV");
 require("dotenv").config();
 
@@ -17,14 +17,24 @@ let LastPageOffset = 0;
 exports.formatOrders = function(orders, items) {
   return new Promise(function(resolve, reject) {
     let formattedOrders = [];
+    let formattedItems = [];
 
     orders.data.forEach(function(order) {
       exports.itemsLookup(order, orders.included.items).then(order => {
         formattedOrders.push(order);
 
+        order.relationships.items.forEach(function(item) {
+          if (
+            item.sku !== "tax_amount" ||
+            Math.sign(item.unit_price.amount) === -1
+          ) {
+            formattedItems.push(item);
+          }
+        });
+
         if (formattedOrders.length === orders.data.length) {
           console.log("all orders are finished formatting");
-          resolve(formattedOrders);
+          resolve([formattedOrders, formattedItems]);
         }
       });
     });
@@ -46,6 +56,7 @@ exports.itemsLookup = function(order, items) {
       // look up each item
       items.forEach(function(item) {
         if (item.id === id) {
+          item.orderID = order.id;
           itemsArray.push(item);
         }
       });
@@ -93,8 +104,12 @@ exports.GetOrders = function(PageOffsetCounter, time) {
         exports
           .formatOrders(orders, orders.included.items)
           .then(formattedOrders => {
-            toCSV
-              .convert(formattedOrders, toCSV.ordersFields, "./csv/orders.csv")
+            toStitchLabsCSV
+              .convert(
+                formattedOrders,
+                toStitchLabsCSV.StitchLabsOrderFields,
+                "./csv/orders.csv"
+              )
               .then(result => {
                 if (PageOffsetCounter < total) {
                   setTimeout(function() {
