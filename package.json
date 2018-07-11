@@ -1,0 +1,18 @@
+{
+  "name": "moltin-orders-csv-export",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "@moltin/sdk": "^3.12.1",
+    "dotenv": "^6.0.0",
+    "json2csv": "^4.1.5"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "author": "Matthew Foyle <matt@moltin.com>",
+  "license": "ISC"
+}
