@@ -79,11 +79,11 @@ exports.process = (orders, PageOffsetCounter, time, headers) => {
                   console.log("fetched all orders, uploading now");
                   upload.upload(
                     "./csv/line_items.csv",
-                    "./uploads/ORDERS/test_line_items.csv"
+                    "./uploads/ORDERS/line_items.csv"
                   );
                   upload.upload(
                     "./csv/orders.csv",
-                    "./uploads/ORDERS/test_orders.csv"
+                    "./uploads/ORDERS/orders.csv"
                   );
                 }
               });
