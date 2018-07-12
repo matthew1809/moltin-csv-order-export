@@ -2,6 +2,7 @@ var exports = (module.exports = {});
 var toStitchLabsCSV = require("./toStitchLabsCSV");
 var toCSV = require("./toCSV");
 require("dotenv").config();
+const index = require("./index");
 
 // moltin SDK setup
 const moltin = require("@moltin/sdk");
@@ -70,63 +71,27 @@ exports.itemsLookup = function(order, items) {
   });
 };
 
+// given a timestamp and offset, fetches orders created after that timestamp, and with that offset
 exports.GetOrders = function(PageOffsetCounter, time) {
-  console.log("this is GetOrders", "we are getting orders created after", time);
+  return new Promise(function(resolve, reject) {
+    console.log("we are getting orders created after", time);
+    console.log('PageOffsetCounter is', PageOffsetCounter);
 
-  let PageLimit = 100;
-  let total = 0;
+    let PageLimit = 100;
+    let total = 0;
 
-  Moltin.Orders.Filter({
-    //eq: { payment: 'paid' },
-    gt: { created_at: time }
-  })
-    .Sort("created_at")
-    .With("items")
-    .Limit(PageLimit)
-    .Offset(PageOffsetCounter)
-    .All()
-    .then(orders => {
-      if (orders.data) {
-        total = orders.meta.results.total;
-
-        PageOffsetCounter = PageOffsetCounter + 100;
-        console.log(
-          "First retrieved order was created at",
-          orders.data[0].meta.timestamps.created_at
-        );
-        console.log(
-          "Page total is",
-          orders.meta.page.total,
-          "\n Current page is",
-          orders.meta.page.current
-        );
-
-        exports
-          .formatOrders(orders, orders.included.items)
-          .then(formattedOrders => {
-            toStitchLabsCSV
-              .convert(
-                formattedOrders,
-                toStitchLabsCSV.StitchLabsOrderFields,
-                "./csv/orders.csv"
-              )
-              .then(result => {
-                if (PageOffsetCounter < total) {
-                  setTimeout(function() {
-                    console.log(
-                      "fetching next page of orders, created after",
-                      time
-                    );
-                    exports.GetOrders(PageOffsetCounter, time);
-                  }, 2000);
-                }
-              });
-          });
-      } else {
-        console.log("no results");
-      }
+    Moltin.Orders.Filter({
+      eq: { payment: "paid" },
+      gt: { created_at: time }
     })
-    .catch(e => {
-      console.log(e);
-    });
+      .Sort("created_at")
+      .With("items")
+      .Limit(PageLimit)
+      .Offset(PageOffsetCounter)
+      .All()
+      .then(orders => {
+        return index.process(orders, PageOffsetCounter, time);
+      })
+      .catch(e => reject(e));
+  });
 };

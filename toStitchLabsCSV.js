@@ -2,6 +2,7 @@ const Json2csvParser = require("json2csv").Parser;
 var exports = (module.exports = {});
 var moltinFunctions = require("./moltin.js");
 var fs = require("fs");
+var getTransactions = require("./moltin/getTransactions");
 
 exports.StitchLabsOrderFields = [
   { label: "channel_order_id", value: "id" },
@@ -55,7 +56,29 @@ let StitchLabsOrderItemFields = [
   }
 ];
 
-// takes in all orders, loops through orders, sends each one for formatting
+const appendTransactionToOrder = order => {
+  getTransactions(order.data.id)
+    .then(transactions => {
+      transactions.data.forEach(transaction => {
+        if (
+          transaction["transaction-type"] === "purchase" &&
+          transaction.status === "complete"
+        ) {
+          order.data.gateway = transaction.gateway;
+          order.data.transaction_id = transaction.reference;
+          order.data.price =
+            order.data.meta.display_price.without_tax.amount / 100;
+
+          resolve(order);
+        } else {
+          console.log("no complete transactions found");
+        }
+      });
+    })
+    .catch(e => reject(e));
+};
+
+// given orders, adds any tax or promotion values for each and returns them
 exports.checkOrders = function(orders) {
   return new Promise(function(resolve, reject) {
     let checkedOrders = [];
@@ -73,8 +96,11 @@ exports.checkOrders = function(orders) {
   });
 };
 
-// takes in an order, loops through items and appends to the order, returns the order
-var checkForTaxOrPromotion = function(order) {
+/* given a single order, looks at its items to check for a negative priced item (promotion)
+or an item with a sku of "tax amount" (tax), appends those values to the order under fields "promotion"
+and "tax" before returning the order. If it doesn't find any items matching the criteria, 
+it returns the orders as is*/
+const checkForTaxOrPromotion = function(order) {
   return new Promise(function(resolve, reject) {
     let items = order.relationships.items;
 
@@ -94,7 +120,7 @@ var checkForTaxOrPromotion = function(order) {
   });
 };
 
-var convertLineItems = function(items, fields, fileName) {
+const convert = function(items, fields, fileName) {
   return new Promise(function(resolve, reject) {
     try {
       let Parser = new Json2csvParser({ fields: fields });
@@ -102,7 +128,8 @@ var convertLineItems = function(items, fields, fileName) {
       let csvString = Parser.parse(items);
 
       toFile(csvString, fileName);
-      resolve("result");
+      
+      resolve(csvString);
     } catch (err) {
       console.log(err);
       reject(err);
@@ -110,53 +137,21 @@ var convertLineItems = function(items, fields, fileName) {
   });
 };
 
-exports.convert = (orders, fields, fileName) => {
+exports.convertProcess = (orders, fields, fileName) => {
   return new Promise(function(resolve, reject) {
     exports.checkOrders(orders[0]).then(checkedOrders => {
-      try {
-        let Parser = new Json2csvParser({ fields: fields });
+      convert(checkedOrders, fields, fileName).then(result => {
 
-        let csvString = Parser.parse(checkedOrders);
-
-        toFile(csvString, fileName);
-
-        convertLineItems(
+        convert(
           orders[1],
           StitchLabsOrderItemFields,
           "./csv/line_items.csv"
         ).then(result => {
           resolve("result");
         });
-      } catch (err) {
-        console.log(err);
-        reject(err);
-      }
+      });
     });
   });
-
-  //   require('../../transactions')
-  //     .getTransaction(order.data.id)
-  //     .then((transactions) => {
-  //       transactions.data.forEach((transaction) => {
-  //         console.log(transaction['transaction-type'], transaction.status);
-  //         if (transaction['transaction-type'] === 'purchase' && transaction.status === 'complete') {
-
-  //           order.data.gateway = transaction.gateway;
-  //           order.data.transaction_id = transaction.reference;
-  //           order.data.price = order.data.meta.display_price.without_tax.amount / 100;
-
-  //           let Parser = new Json2csvParser({fields: fields, header: headers});
-
-  //           let csvString = Parser.parse(order.data);
-
-  //           return resolve({order: csvString, items: items});
-  //         } else {
-  //           console.log('no complete transactions found');
-  //         }
-  //       });
-  //     })
-  //     .catch((e) => reject(e));
-  // });
 };
 
 const toFile = function(data, fileName) {
