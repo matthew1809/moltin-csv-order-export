@@ -44,30 +44,29 @@ exports.process = (orders, PageOffsetCounter, time, headers) => {
     var counter = 0;
 
     // because we only filter by date not time, we need to check that the orders are created after the time of the latest order in the csv
-    orders.data.forEach(function(order, index) {
+    orders.data.forEach(async function(order, index) {
       let trimmedTime = time.slice(1, 24);
+
+      await getTransactions(order).then(transactions => {
+        if (order.meta.timestamps.created_at > trimmedTime) {
+          let result = transactions[0];
+          let transaction = transactions[1];
+
+
+          if (result === true && transaction !== undefined) {
+            order.gateway = transaction.transaction.gateway;
+            order.transaction_id = transaction.transaction.reference;
+            trimmedOrders.push(order);
+          }
+        }
+
+        counter++;
+      });
+
+      var wait = await setTimeout(() => {}, 1000);
+
       console.log(counter);
       console.log(orders.data.length);
-
-      setTimeout(function() {
-        getTransactions(order).then(response => {
-          counter++;
-
-          console.log(counter);
-          console.log(orders.data.length);
-
-          if (order.meta.timestamps.created_at > trimmedTime) {
-            let result = response[0];
-            let transaction = response[1];
-
-            if (result === true) {
-              order.gateway = transaction.gateway;
-              order.transaction_id = transaction.reference;
-              trimmedOrders.push(order);
-            }
-          }
-        });
-      }, 1000 * index);
 
       if (orders.data.length === counter) {
         console.log("all orders processed");

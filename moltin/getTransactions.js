@@ -9,17 +9,18 @@ module.exports = function(order) {
 
   return new Promise((resolve, reject) => {
     //resolve(order);
-    Moltin.Orders.Transactions(order.id)
+    Moltin.Transactions.All({ order: order.id })
 
       .then(transactions => {
         transactions.data.forEach(function(transaction) {
           if (
-            transaction["transaction-type"] === "purchase" &&
+            (transaction["transaction-type"] === "purchase" ||
+              transaction["transaction-type"] === "capture") &&
             transaction.status === "complete"
           ) {
-            resolve([true, transaction]);
+            resolve([true, { transaction }]);
           } else {
-            resolve(false, "none");
+            resolve([false, undefined]);
           }
         });
       })
