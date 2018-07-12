@@ -12,6 +12,7 @@ module.exports = function(order) {
     Moltin.Transactions.All({ order: order.id })
 
       .then(transactions => {
+
         transactions.data.forEach(function(transaction) {
           if (
             (transaction["transaction-type"] === "purchase" ||

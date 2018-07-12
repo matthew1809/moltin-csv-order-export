@@ -80,7 +80,7 @@ exports.GetOrders = function(PageOffsetCounter, time, headers) {
   let formattedTime = time.slice(1, 24);
 
   let date = time.slice(1, 11);
-  let PageLimit = 10;
+  let PageLimit = process.env.MOLTIN_PAGE_LIMIT || 50;
   let total = 0;
 
   console.log("we are getting orders created after", date);

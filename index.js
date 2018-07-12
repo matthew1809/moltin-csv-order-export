@@ -5,6 +5,10 @@ const toCSV = require("./toStitchLabsCSV");
 const upload = require("./upload/upload");
 const getTransactions = require("./moltin/getTransactions");
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+};
+
 // reads orders CSV file to see where we should start getting orders from in Moltin
 fromCSV
   .readFile("./csv/orders.csv")
@@ -48,7 +52,7 @@ exports.process = (orders, PageOffsetCounter, time, headers) => {
       let trimmedTime = time.slice(1, 24);
 
       await getTransactions(order).then(transactions => {
-        if (order.meta.timestamps.created_at > trimmedTime) {
+        if (new Date(order.meta.timestamps.created_at) > new Date(trimmedTime)) {
           let result = transactions[0];
           let transaction = transactions[1];
 
@@ -63,7 +67,7 @@ exports.process = (orders, PageOffsetCounter, time, headers) => {
         counter++;
       });
 
-      var wait = await setTimeout(() => {}, 1000);
+      await sleep(1000)
 
       console.log(counter);
       console.log(orders.data.length);
