@@ -1,5 +1,8 @@
-module.exports = (content, path) => {
-  console.log("Upload path for this CSV file is", path);
+var exports = (module.exports = {});
+const fs = require('fs');
+
+exports.upload = (readPath, writePath) => {
+  console.log("Upload path for this CSV file is", writePath);
 
   let sshClient = require("ssh2").Client;
 
@@ -14,26 +17,26 @@ module.exports = (content, path) => {
 
         console.log("Connection established");
 
-        let fileAttributes = sftp.stat(path, function(err, stats) {
           if (err) {
             console.log(err);
           }
+          let readStream = fs.createReadStream(readPath)
+          let writeStream = sftp.createWriteStream(writePath);
 
-          let writeStream = sftp.createWriteStream(path);
-          console.log("writing data to path ", path);
-          writeStream.end(content);
+          console.log("writing data to path ", writePath);
+          readStream.pipe(writeStream);
 
           writeStream.on("close", () => {
-            console.log(" - file transferred succesfully to path ", path);
+            console.log(" - file transferred succesfully to path ", writePath);
             conn.end();
           });
         });
-      });
+
     })
     .connect({
-      host: process.env.STITCHLABS_HOST,
-      port: process.env.STITCHLABS_PORT,
-      username: process.env.STITCHLABS_USERNAME,
-      password: process.env.STITCHLABS_PASSWORD
+      host: process.env.UPLOAD_HOST,
+      port: process.env.UPLOAD_PORT,
+      username: process.env.UPLOAD_USERNAME,
+      password: process.env.UPLOAD_PASSWORD
     });
 };

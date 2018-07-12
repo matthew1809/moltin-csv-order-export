@@ -34,7 +34,6 @@ exports.formatOrders = function(orders, items) {
         });
 
         if (formattedOrders.length === orders.data.length) {
-          console.log("all orders are finished formatting");
           resolve([formattedOrders, formattedItems]);
         }
       });
@@ -73,16 +72,19 @@ exports.itemsLookup = function(order, items) {
 
 // given a timestamp and offset, fetches orders created after that timestamp, and with that offset
 exports.GetOrders = function(PageOffsetCounter, time) {
-  return new Promise(function(resolve, reject) {
-    console.log("we are getting orders created after", time);
     console.log('PageOffsetCounter is', PageOffsetCounter);
 
+    let formattedTime = time.slice(1, 24);
+
+    let date = time.slice(1, 11);
     let PageLimit = 100;
     let total = 0;
 
+    console.log("we are getting orders created after", date);
+
     Moltin.Orders.Filter({
       eq: { payment: "paid" },
-      gt: { created_at: time }
+      gt: { created_at: date }
     })
       .Sort("created_at")
       .With("items")
@@ -90,8 +92,7 @@ exports.GetOrders = function(PageOffsetCounter, time) {
       .Offset(PageOffsetCounter)
       .All()
       .then(orders => {
-        return index.process(orders, PageOffsetCounter, time);
+        index.process(orders, PageOffsetCounter, time);
       })
-      .catch(e => reject(e));
-  });
+      .catch(e => console.log(e));
 };
