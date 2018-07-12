@@ -22,12 +22,15 @@ exports.formatOrders = function(orders, items) {
 
     orders.data.forEach(function(order) {
       exports.itemsLookup(order, orders.included.items).then(order => {
+        
+        order.price = order.meta.display_price.with_tax.amount / 100;
+
         formattedOrders.push(order);
 
         order.relationships.items.forEach(function(item) {
           if (
-            item.sku !== "tax_amount" ||
-            Math.sign(item.unit_price.amount) === -1
+            item.sku !== "tax_amount" &&
+            Math.sign(item.unit_price.amount) !== -1
           ) {
             formattedItems.push(item);
           }
@@ -57,11 +60,12 @@ exports.itemsLookup = function(order, items) {
       items.forEach(function(item) {
         if (item.id === id) {
           item.orderID = order.id;
+          item.price = item.unit_price.amount / 100;
           itemsArray.push(item);
         }
       });
 
-      // if there are not order items left to process
+      // if there are no order items left to process
       if (itemsProcessed === order.relationships.items.data.length) {
         order.relationships.items = itemsArray;
         resolve(order);
@@ -71,7 +75,7 @@ exports.itemsLookup = function(order, items) {
 };
 
 // given a timestamp and offset, fetches orders created after that timestamp, and with that offset
-exports.GetOrders = function(PageOffsetCounter, time) {
+exports.GetOrders = function(PageOffsetCounter, time, headers) {
     console.log('PageOffsetCounter is', PageOffsetCounter);
 
     let formattedTime = time.slice(1, 24);
@@ -92,7 +96,7 @@ exports.GetOrders = function(PageOffsetCounter, time) {
       .Offset(PageOffsetCounter)
       .All()
       .then(orders => {
-        index.process(orders, PageOffsetCounter, time);
+        index.process(orders, PageOffsetCounter, time, headers);
       })
       .catch(e => console.log(e));
 };

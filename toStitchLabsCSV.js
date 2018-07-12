@@ -120,15 +120,17 @@ const checkForTaxOrPromotion = function(order) {
   });
 };
 
-const convert = function(items, fields, fileName) {
+const convert = function(items, fields, fileName, headers) {
   return new Promise(function(resolve, reject) {
-    try {
-      let Parser = new Json2csvParser({ fields: fields });
 
-      let csvString = Parser.parse(items);
+    try {
+
+      let Parser = new Json2csvParser({ fields: fields, header: headers });
+
+      let csvString = Parser.parse(items) + "\r\n";
 
       toFile(csvString, fileName);
-      
+
       resolve(csvString);
     } catch (err) {
       console.log(err);
@@ -137,15 +139,16 @@ const convert = function(items, fields, fileName) {
   });
 };
 
-exports.convertProcess = (orders, fields, fileName) => {
+exports.convertProcess = (orders, fields, fileName, headers) => {
   return new Promise(function(resolve, reject) {
     exports.checkOrders(orders[0]).then(checkedOrders => {
-      convert(checkedOrders, fields, fileName).then(result => {
+      convert(checkedOrders, fields, fileName, headers).then(result => {
 
         convert(
           orders[1],
           StitchLabsOrderItemFields,
-          "./csv/line_items.csv"
+          "./csv/line_items.csv",
+          headers
         ).then(result => {
           resolve("result");
         });

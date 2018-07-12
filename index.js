@@ -9,7 +9,7 @@ fromCSV
 // now we have a timestamp from whch to begin fetching orders
 .then(time => {
 // go get our orders
-moltinFunctions.GetOrders(0, time)
+moltinFunctions.GetOrders(0, time[0], time[1])
 })
 .catch(e => {
 console.log(e);
@@ -17,8 +17,8 @@ console.log(e);
 
 
 // given orders and an offset, processes the orders, updates the offset and asks for the next batch of orders
-exports.process = (orders, PageOffsetCounter, time) => {
-  
+exports.process = (orders, PageOffsetCounter, time, headers) => {
+
   console.log('PageOffsetCounter is', PageOffsetCounter);
   // if there are orders in the results from Moltin
   if (orders.data) {
@@ -54,18 +54,19 @@ exports.process = (orders, PageOffsetCounter, time) => {
      	};
 
      	if(orders.data.length === counter) {
-     		console.log('running');
      		orders.data = trimmedOrders;
 
 	      moltinFunctions
 	      // sends orders and their items to be formatted and associated correctly
 	      .formatOrders(orders, orders.included.items)
 	      .then(formattedOrders => {
+
 	        toCSV
 	          .convertProcess(
 	            formattedOrders,
 	            toCSV.StitchLabsOrderFields,
-	            "./csv/orders.csv"
+	            "./csv/orders.csv",
+	            headers
 	          )
 	          .then(result => {
 	          	console.log(PageOffsetCounter, total
@@ -77,12 +78,12 @@ exports.process = (orders, PageOffsetCounter, time) => {
 	                  "fetching next page of orders, created after",
 	                  time
 	                );
-	                moltinFunctions.GetOrders(PageOffsetCounter, time);
+	                moltinFunctions.GetOrders(PageOffsetCounter, time, false);
 	              }, 2000);
 	            } else {
 	            	console.log('fetched all orders, uploading now');
-	            	//upload.upload('./csv/line_items.csv', './uploads/ORDERS/test_line_items.csv');
-	    			//upload.upload('./csv/orders.csv', './uploads/ORDERS/test_orders.csv');
+	            	upload.upload('./csv/line_items.csv', './uploads/ORDERS/test_line_items.csv');
+	    			upload.upload('./csv/orders.csv', './uploads/ORDERS/test_orders.csv');
 	            }
 	          });
 	      });
