@@ -8,24 +8,24 @@ module.exports = function(order) {
   });
 
   return new Promise((resolve, reject) => {
-    resolve(order);
-//     Moltin.Orders.Transactions(order.id)
+    //resolve(order);
+    Moltin.Orders.Transactions(order.id)
 
-//       .then(transactions => {
-//         transactions.data.forEach(function(transaction) {
-//           if (
-//             transaction["transaction-type"] === "purchase" &&
-//             transaction.status === "complete"
-//           ) {
-//             order.gateway = transaction.gateway;
-//             order.transaction_id = transaction.reference;
-//             resolve(order);
-//           }
-//         });
-//       })
-//       .catch(e => {
-//         console.log(e);
-//         reject(e);
-//       });
-   });
- };
+      .then(transactions => {
+        transactions.data.forEach(function(transaction) {
+          if (
+            transaction["transaction-type"] === "purchase" &&
+            transaction.status === "complete"
+          ) {
+            resolve([true, transaction]);
+          } else {
+            resolve(false, "none");
+          }
+        });
+      })
+      .catch(e => {
+        console.log(e);
+        reject(e);
+      });
+  });
+};

@@ -56,28 +56,6 @@ let StitchLabsOrderItemFields = [
   }
 ];
 
-const appendTransactionToOrder = order => {
-  getTransactions(order.data.id)
-    .then(transactions => {
-      transactions.data.forEach(transaction => {
-        if (
-          transaction["transaction-type"] === "purchase" &&
-          transaction.status === "complete"
-        ) {
-          order.data.gateway = transaction.gateway;
-          order.data.transaction_id = transaction.reference;
-          order.data.price =
-            order.data.meta.display_price.without_tax.amount / 100;
-
-          resolve(order);
-        } else {
-          console.log("no complete transactions found");
-        }
-      });
-    })
-    .catch(e => reject(e));
-};
-
 // given orders, adds any tax or promotion values for each and returns them
 exports.checkOrders = function(orders) {
   return new Promise(function(resolve, reject) {
@@ -110,7 +88,7 @@ const checkForTaxOrPromotion = function(order) {
 
         resolve(order);
       } else if (Math.sign(item.unit_price.amount) === -1) {
-        order.promotion = item.unit_price.amount / 100;
+        order.promotion = Math.abs(item.unit_price.amount / 100);
 
         resolve(order);
       } else {

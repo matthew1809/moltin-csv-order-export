@@ -3,7 +3,6 @@ var toStitchLabsCSV = require("./toStitchLabsCSV");
 var toCSV = require("./toCSV");
 require("dotenv").config();
 const index = require("./index");
-const getTransactions = require("./moltin/getTransactions");
 
 // moltin SDK setup
 const moltin = require("@moltin/sdk");
@@ -22,28 +21,24 @@ exports.formatOrders = function(orders, items) {
     let formattedItems = [];
 
     orders.data.forEach(function(order, index) {
+      exports.itemsLookup(order, orders.included.items).then(order => {
+        order.price = order.meta.display_price.with_tax.amount / 100;
 
-        exports.itemsLookup(order, orders.included.items).then(order => {
-          
-          getTransactions(order).then(order => {
-            order.price = order.meta.display_price.with_tax.amount / 100;
+        formattedOrders.push(order);
 
-            formattedOrders.push(order);
-
-            order.relationships.items.forEach(function(item) {
-              if (
-                item.sku !== "tax_amount" &&
-                Math.sign(item.unit_price.amount) !== -1
-              ) {
-                formattedItems.push(item);
-              }
-            });
-
-            if (formattedOrders.length === orders.data.length) {
-              resolve([formattedOrders, formattedItems]);
-            }
-          });
+        order.relationships.items.forEach(function(item) {
+          if (
+            item.sku !== "tax_amount" &&
+            Math.sign(item.unit_price.amount) !== -1
+          ) {
+            formattedItems.push(item);
+          }
         });
+
+        if (formattedOrders.length === orders.data.length) {
+          resolve([formattedOrders, formattedItems]);
+        }
+      });
     });
   });
 };

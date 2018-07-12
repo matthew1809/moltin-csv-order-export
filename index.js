@@ -3,13 +3,15 @@ const fromCSV = require("./fromCSV");
 const moltinFunctions = require("./moltin");
 const toCSV = require("./toStitchLabsCSV");
 const upload = require("./upload/upload");
+const getTransactions = require("./moltin/getTransactions");
+
 // reads orders CSV file to see where we should start getting orders from in Moltin
 fromCSV
   .readFile("./csv/orders.csv")
   // now we have a timestamp from whch to begin fetching orders
-  .then(time => {
+  .then(result => {
     // go get our orders
-    moltinFunctions.GetOrders(0, time[0], time[1]);
+    moltinFunctions.GetOrders(0, result[0], result[1]);
   })
   .catch(e => {
     console.log(e);
@@ -39,18 +41,36 @@ exports.process = (orders, PageOffsetCounter, time, headers) => {
     );
 
     let trimmedOrders = [];
-    let counter = 0;
+    var counter = 0;
+
     // because we only filter by date not time, we need to check that the orders are created after the time of the latest order in the csv
-    orders.data.forEach(function(order) {
-      counter++;
-
+    orders.data.forEach(function(order, index) {
       let trimmedTime = time.slice(1, 24);
+      console.log(counter);
+      console.log(orders.data.length);
 
-      if (order.meta.timestamps.created_at > trimmedTime) {
-        trimmedOrders.push(order);
-      }
+      setTimeout(function() {
+        getTransactions(order).then(response => {
+          counter++;
+
+          console.log(counter);
+          console.log(orders.data.length);
+
+          if (order.meta.timestamps.created_at > trimmedTime) {
+            let result = response[0];
+            let transaction = response[1];
+
+            if (result === true) {
+              order.gateway = transaction.gateway;
+              order.transaction_id = transaction.reference;
+              trimmedOrders.push(order);
+            }
+          }
+        });
+      }, 1000 * index);
 
       if (orders.data.length === counter) {
+        console.log("all orders processed");
         orders.data = trimmedOrders;
 
         moltinFunctions
