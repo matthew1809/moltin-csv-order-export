@@ -3,6 +3,7 @@ var toStitchLabsCSV = require("./toStitchLabsCSV");
 var toCSV = require("./toCSV");
 require("dotenv").config();
 const index = require("./index");
+const getTransactions = require("./moltin/getTransactions");
 
 // moltin SDK setup
 const moltin = require("@moltin/sdk");
@@ -20,26 +21,29 @@ exports.formatOrders = function(orders, items) {
     let formattedOrders = [];
     let formattedItems = [];
 
-    orders.data.forEach(function(order) {
-      exports.itemsLookup(order, orders.included.items).then(order => {
-        
-        order.price = order.meta.display_price.with_tax.amount / 100;
+    orders.data.forEach(function(order, index) {
 
-        formattedOrders.push(order);
+        exports.itemsLookup(order, orders.included.items).then(order => {
+          
+          getTransactions(order).then(order => {
+            order.price = order.meta.display_price.with_tax.amount / 100;
 
-        order.relationships.items.forEach(function(item) {
-          if (
-            item.sku !== "tax_amount" &&
-            Math.sign(item.unit_price.amount) !== -1
-          ) {
-            formattedItems.push(item);
-          }
+            formattedOrders.push(order);
+
+            order.relationships.items.forEach(function(item) {
+              if (
+                item.sku !== "tax_amount" &&
+                Math.sign(item.unit_price.amount) !== -1
+              ) {
+                formattedItems.push(item);
+              }
+            });
+
+            if (formattedOrders.length === orders.data.length) {
+              resolve([formattedOrders, formattedItems]);
+            }
+          });
         });
-
-        if (formattedOrders.length === orders.data.length) {
-          resolve([formattedOrders, formattedItems]);
-        }
-      });
     });
   });
 };
@@ -76,27 +80,27 @@ exports.itemsLookup = function(order, items) {
 
 // given a timestamp and offset, fetches orders created after that timestamp, and with that offset
 exports.GetOrders = function(PageOffsetCounter, time, headers) {
-    console.log('PageOffsetCounter is', PageOffsetCounter);
+  console.log("PageOffsetCounter is", PageOffsetCounter);
 
-    let formattedTime = time.slice(1, 24);
+  let formattedTime = time.slice(1, 24);
 
-    let date = time.slice(1, 11);
-    let PageLimit = 100;
-    let total = 0;
+  let date = time.slice(1, 11);
+  let PageLimit = 100;
+  let total = 0;
 
-    console.log("we are getting orders created after", date);
+  console.log("we are getting orders created after", date);
 
-    Moltin.Orders.Filter({
-      eq: { payment: "paid" },
-      gt: { created_at: date }
+  Moltin.Orders.Filter({
+    eq: { payment: "paid" },
+    gt: { created_at: date }
+  })
+    .Sort("created_at")
+    .With("items")
+    .Limit(PageLimit)
+    .Offset(PageOffsetCounter)
+    .All()
+    .then(orders => {
+      index.process(orders, PageOffsetCounter, time, headers);
     })
-      .Sort("created_at")
-      .With("items")
-      .Limit(PageLimit)
-      .Offset(PageOffsetCounter)
-      .All()
-      .then(orders => {
-        index.process(orders, PageOffsetCounter, time, headers);
-      })
-      .catch(e => console.log(e));
+    .catch(e => console.log(e));
 };

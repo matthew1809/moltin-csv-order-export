@@ -122,9 +122,7 @@ const checkForTaxOrPromotion = function(order) {
 
 const convert = function(items, fields, fileName, headers) {
   return new Promise(function(resolve, reject) {
-
     try {
-
       let Parser = new Json2csvParser({ fields: fields, header: headers });
 
       let csvString = Parser.parse(items) + "\r\n";
@@ -143,7 +141,6 @@ exports.convertProcess = (orders, fields, fileName, headers) => {
   return new Promise(function(resolve, reject) {
     exports.checkOrders(orders[0]).then(checkedOrders => {
       convert(checkedOrders, fields, fileName, headers).then(result => {
-
         convert(
           orders[1],
           StitchLabsOrderItemFields,

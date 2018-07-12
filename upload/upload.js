@@ -1,5 +1,5 @@
 var exports = (module.exports = {});
-const fs = require('fs');
+const fs = require("fs");
 
 exports.upload = (readPath, writePath) => {
   console.log("Upload path for this CSV file is", writePath);
@@ -17,21 +17,20 @@ exports.upload = (readPath, writePath) => {
 
         console.log("Connection established");
 
-          if (err) {
-            console.log(err);
-          }
-          let readStream = fs.createReadStream(readPath)
-          let writeStream = sftp.createWriteStream(writePath);
+        if (err) {
+          console.log(err);
+        }
+        let readStream = fs.createReadStream(readPath);
+        let writeStream = sftp.createWriteStream(writePath);
 
-          console.log("writing data to path ", writePath);
-          readStream.pipe(writeStream);
+        console.log("writing data to path ", writePath);
+        readStream.pipe(writeStream);
 
-          writeStream.on("close", () => {
-            console.log(" - file transferred succesfully to path ", writePath);
-            conn.end();
-          });
+        writeStream.on("close", () => {
+          console.log(" - file transferred succesfully to path ", writePath);
+          conn.end();
         });
-
+      });
     })
     .connect({
       host: process.env.UPLOAD_HOST,

@@ -12,7 +12,7 @@ exports.readFile = function(path) {
     // if there's nothing, that means we need to get orders from the beginning of time
     if (stats.size === 0) {
       console.log("file is empty");
-      resolve(["\"2000-01-01T00:00:00.000Z\"", true]);
+      resolve(['"2000-01-01T00:00:00.000Z"', true]);
     }
 
     // if there are orders in the file, that means we need to get orders after the created_at timestamp of the last order in the file
