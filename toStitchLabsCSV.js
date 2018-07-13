@@ -2,13 +2,12 @@ const Json2csvParser = require("json2csv").Parser;
 var exports = (module.exports = {});
 var moltinFunctions = require("./moltin.js");
 var fs = require("fs");
-var getTransactions = require("./moltin/getTransactions");
 
 exports.StitchLabsOrderFields = [
   { label: "channel_order_id", value: "id" },
   { label: "order_date", value: "meta.timestamps.created_at" },
   { label: "ship_date", value: "meta.timestamps.created_at" },
-  { label: "subtotal", value: "price" },
+  { label: "subtotal", value: "subtotal" },
   { label: "total", value: "price" },
   { label: "currency", value: "meta.display_price.without_tax.currency" },
   { label: "order_status", value: "PAID", default: "PAID" },
@@ -81,15 +80,16 @@ it returns the orders as is*/
 const checkForTaxOrPromotion = function(order) {
   return new Promise(function(resolve, reject) {
     let items = order.relationships.items;
+    order.subtotal = order.meta.display_price.with_tax.amount / 100;
 
     items.forEach(function(item) {
       if (item.sku === "tax_amount") {
         order.tax = item.unit_price.amount / 100;
+        order.subtotal = (order.meta.display_price.with_tax.amount / 100) - order.tax;
 
         resolve(order);
       } else if (Math.sign(item.unit_price.amount) === -1) {
         order.promotion = Math.abs(item.unit_price.amount / 100);
-
         resolve(order);
       } else {
         resolve(order);
