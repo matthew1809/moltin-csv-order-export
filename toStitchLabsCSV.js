@@ -85,7 +85,8 @@ const checkForTaxOrPromotion = function(order) {
     items.forEach(function(item) {
       if (item.sku === "tax_amount") {
         order.tax = item.unit_price.amount / 100;
-        order.subtotal = (order.meta.display_price.with_tax.amount / 100) - order.tax;
+        order.subtotal =
+          order.meta.display_price.with_tax.amount / 100 - order.tax;
 
         resolve(order);
       } else if (Math.sign(item.unit_price.amount) === -1) {

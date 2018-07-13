@@ -22,7 +22,6 @@ fromCSV
 
 // given orders and an offset, processes the orders, updates the offset and asks for the next batch of orders
 exports.process = async (orders, PageOffsetCounter, time, headers) => {
-
   console.log("PageOffsetCounter is", PageOffsetCounter);
   // if there are orders in the results from Moltin
   if (orders.data) {
@@ -49,26 +48,25 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
 
     // because we only filter by date not time, we need to check that the orders are created after the time of the latest order in the csv
     await orders.data.forEach(async function(order, index) {
-      
       await sleep(1000 * index);
       let trimmedTime = time.slice(1, 24);
 
-      var transactions = await moltinFunctions.getTransactions(order)
-      
-        if (
-          new Date(order.meta.timestamps.created_at) > new Date(trimmedTime)
-        ) {
-          let result = transactions[0];
-          let transaction = transactions[1];
+      var transactions = await moltinFunctions.getTransactions(order);
 
-          if (result === true && transaction !== undefined) {
-            order.gateway = transaction.gateway;
-            order.gateway === 'manual' ? order.transaction_id = transaction.affirm_charge_id : order.transaction_id = transaction.reference;
-            trimmedOrders.push(order);
-          }
+      if (new Date(order.meta.timestamps.created_at) > new Date(trimmedTime)) {
+        let result = transactions[0];
+        let transaction = transactions[1];
+
+        if (result === true && transaction !== undefined) {
+          order.gateway = transaction.gateway;
+          order.gateway === "manual"
+            ? (order.transaction_id = transaction.affirm_charge_id)
+            : (order.transaction_id = transaction.reference);
+          trimmedOrders.push(order);
         }
+      }
 
-        counter++;
+      counter++;
 
       console.log(counter);
       console.log(orders.data.length);
