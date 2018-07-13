@@ -106,7 +106,7 @@ const convert = function(items, fields, fileName, headers) {
 
       let csvString = Parser.parse(items) + "\r\n";
 
-      toFile(csvString, fileName);
+      toSFTPFile(csvString, fileName);
 
       resolve(csvString);
     } catch (err) {
@@ -123,7 +123,7 @@ exports.convertProcess = (orders, fields, fileName, headers) => {
         convert(
           orders[1],
           StitchLabsOrderItemFields,
-          "./csv/line_items.csv",
+          process.env.SFTP_ORDER_ITEMS,
           headers
         ).then(result => {
           resolve("result");
@@ -138,4 +138,79 @@ const toFile = function(data, fileName) {
     if (err) throw err;
     console.log(fileName, "Saved!");
   });
+};
+
+const toSFTPFile = function (content, path) {
+  
+  return new Promise(function(resolve, reject) {
+
+    console.log('Upload path for this CSV file is', path);
+    
+    let sshClient = require('ssh2').Client;
+
+    let conn = new sshClient();
+
+    conn.on('ready', () => {
+      conn.sftp(( err, sftp) => {
+        if ( err ) {
+          return console.log('Errror in connection', err);
+        }
+
+        console.log('Connection established');
+
+        let stats = sftp.stat(path, function(err, stats) {
+
+          if(err) {
+            console.log(err);
+          }
+
+          if(stats.size === 0) {
+            console.log('file at path ', path, ' is empty');
+
+            let writeStream = sftp.createWriteStream(path);
+            console.log('writing data to path ', path);
+            writeStream.end(content);
+
+            writeStream.on('close', () => {
+              console.log(' - file transferred succesfully to path ', path);
+              resolve('- file transferred succesfully to path ', path);
+              conn.end();
+           });
+          } else {
+            console.log('file at path ', path, ' is not empty');
+
+            let readStream = sftp.createReadStream(path);
+            let fullData = '';
+
+            readStream.on('data', function(data){
+                            console.log('read file data at path ', path);
+                            let originalData = data.toString('utf8');
+                            fullData = originalData + "\n" + content;
+                        });
+
+            readStream.on('end', function() {
+
+              let writeStream = sftp.createWriteStream(path);
+              console.log('writing data to path ', path);
+              writeStream.end(fullData);
+
+              writeStream.on('close', () => {
+                console.log(' - file transferred succesfully to path ', path);
+                resolve('- file transferred succesfully to path ', path);
+                conn.end();
+             });
+
+            })
+
+          }
+        });
+
+      });
+    }).connect({
+          host: process.env.SFTP_HOST,
+          port: process.env.SFTP_PORT,
+          username: process.env.SFTP_USERNAME,
+          password: process.env.SFTP_PASSWORD
+    });
+  })
 };

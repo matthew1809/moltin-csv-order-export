@@ -10,9 +10,10 @@ function sleep(ms) {
 
 // reads orders CSV file to see where we should start getting orders from in Moltin
 fromCSV
-  .readFile("./csv/orders.csv")
+  .readSFTPFile("uploads/ORDERS/orders.csv")
   // now we have a timestamp from whch to begin fetching orders
   .then(result => {
+
     // go get our orders
     moltinFunctions.GetOrders(0, result[0], result[1]);
   })
@@ -83,7 +84,7 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
               .convertProcess(
                 formattedOrders,
                 toCSV.StitchLabsOrderFields,
-                "./csv/orders.csv",
+                process.env.SFTP_ORDERS,
                 headers
               )
               .then(result => {
@@ -99,26 +100,26 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
                   }, 2000);
                 } else {
                   console.log("fetched all orders, uploading now");
-                  upload.upload(
-                    "./csv/line_items.csv",
-                    "./uploads/ORDERS/line_items.csv"
-                  );
-                  upload.upload(
-                    "./csv/orders.csv",
-                    "./uploads/ORDERS/orders.csv"
-                  );
+                  // upload.upload(
+                  //   "./csv/line_items.csv",
+                  //   "./uploads/ORDERS/line_items.csv"
+                  // );
+                  // upload.upload(
+                  //   "./csv/orders.csv",
+                  //   "./uploads/ORDERS/orders.csv"
+                  // );
 
 
-                  fs.readFile("./csv/orders.csv", "utf-8", function(err, data) {
+                  // fs.readFile("./csv/orders.csv", "utf-8", function(err, data) {
 
-                    if (err) {console.log(err)};
+                  //   if (err) {console.log(err)};
 
-                    fromCSV.checkForDuplicated(data).then((duplicates) => {
-                      console.log('duplicates are', duplicates);
-                    }).catch((e) => {
-                      console.log(e);
-                    })
-                  })
+                  //   fromCSV.checkForDuplicated(data).then((duplicates) => {
+                  //     console.log('duplicates are', duplicates);
+                  //   }).catch((e) => {
+                  //     console.log(e);
+                  //   })
+                  // })
 
                 }
               });
