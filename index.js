@@ -3,11 +3,10 @@ const fromCSV = require("./fromCSV");
 const moltinFunctions = require("./moltin");
 const toCSV = require("./toStitchLabsCSV");
 const upload = require("./upload/upload");
-const getTransactions = require("./moltin/getTransactions");
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
-};
+}
 
 // reads orders CSV file to see where we should start getting orders from in Moltin
 fromCSV
@@ -22,13 +21,14 @@ fromCSV
   });
 
 // given orders and an offset, processes the orders, updates the offset and asks for the next batch of orders
-exports.process = (orders, PageOffsetCounter, time, headers) => {
+exports.process = async (orders, PageOffsetCounter, time, headers) => {
+
   console.log("PageOffsetCounter is", PageOffsetCounter);
   // if there are orders in the results from Moltin
   if (orders.data) {
     total = orders.meta.results.total;
 
-    PageOffsetCounter = PageOffsetCounter + 100;
+    PageOffsetCounter = PageOffsetCounter + process.env.MOLTIN_PAGE_LIMIT || 50;
 
     console.log(
       "First retrieved order from moltin was created at",
@@ -48,26 +48,27 @@ exports.process = (orders, PageOffsetCounter, time, headers) => {
     var counter = 0;
 
     // because we only filter by date not time, we need to check that the orders are created after the time of the latest order in the csv
-    orders.data.forEach(async function(order, index) {
+    await orders.data.forEach(async function(order, index) {
+      
+      await sleep(1000 * index);
       let trimmedTime = time.slice(1, 24);
 
-      await getTransactions(order).then(transactions => {
-        if (new Date(order.meta.timestamps.created_at) > new Date(trimmedTime)) {
+      var transactions = await moltinFunctions.getTransactions(order)
+      
+        if (
+          new Date(order.meta.timestamps.created_at) > new Date(trimmedTime)
+        ) {
           let result = transactions[0];
           let transaction = transactions[1];
 
-
           if (result === true && transaction !== undefined) {
-            order.gateway = transaction.transaction.gateway;
-            order.transaction_id = transaction.transaction.reference;
+            order.gateway = transaction.gateway;
+            order.gateway === 'manual' ? order.transaction_id = transaction.affirm_charge_id : order.transaction_id = transaction.reference;
             trimmedOrders.push(order);
           }
         }
 
         counter++;
-      });
-
-      await sleep(1000)
 
       console.log(counter);
       console.log(orders.data.length);
