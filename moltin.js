@@ -15,6 +15,34 @@ const Moltin = moltin.gateway({
 
 let LastPageOffset = 0;
 
+exports.getTransactions = function(order) {
+   
+    return new Promise((resolve, reject) => {
+      //resolve(order);
+      Moltin.Transactions.All({ order: order.id })
+
+        .then(transactions => {
+
+          transactions.data.forEach(function(transaction) {
+            if (
+              (transaction["transaction-type"] === "purchase" ||
+                transaction["transaction-type"] === "capture") &&
+              transaction.status === "complete"
+            ) {
+              resolve([true, transaction]);
+            } else {
+              resolve([false, undefined]);
+            }
+          });
+        })
+        .catch(e => {
+          console.log(e);
+          reject(e);
+        });
+    });
+};
+
+
 exports.formatOrders = function(orders, items) {
   return new Promise(function(resolve, reject) {
     let formattedOrders = [];
