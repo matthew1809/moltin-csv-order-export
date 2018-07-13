@@ -78,3 +78,29 @@ exports.readSFTPFile = readPath => {
       });
   });
 };
+
+exports.checkForDuplicates = function solution(csv) {
+
+  return new Promise(function(resolve, reject) {
+
+  var lines = csv.split(/\r?\n/g);
+  
+  var counts = {};
+  var multiples = {};
+  
+  for (var i=0, ii=lines.length; i<ii; i++)
+  {
+    var splt = lines[i].split(/\s*\|\s*/g);
+    var val = splt[0];
+    
+    if (!counts[val]) {
+      counts[val] = 1;
+    } else {
+      counts[val]++;
+      multiples[val] = counts[val];
+    }
+  }
+     
+  resolve(multiples);
+  })
+};

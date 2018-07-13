@@ -107,6 +107,19 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
                     "./csv/orders.csv",
                     "./uploads/ORDERS/orders.csv"
                   );
+
+
+                  fs.readFile("./csv/orders.csv", "utf-8", function(err, data) {
+
+                    if (err) {console.log(err)};
+
+                    fromCSV.checkForDuplicated(data).then((duplicates) => {
+                      console.log('duplicates are', duplicates);
+                    }).catch((e) => {
+                      console.log(e);
+                    })
+                  })
+
                 }
               });
           });
