@@ -33,9 +33,9 @@ exports.upload = (readPath, writePath) => {
       });
     })
     .connect({
-      host: process.env.UPLOAD_HOST,
-      port: process.env.UPLOAD_PORT,
-      username: process.env.UPLOAD_USERNAME,
-      password: process.env.UPLOAD_PASSWORD
+      host: process.env.SFTP_HOST,
+      port: process.env.SFTP_PORT,
+      username: process.env.SFTP_USERNAME,
+      password: process.env.SFTP_PASSWORD
     });
 };

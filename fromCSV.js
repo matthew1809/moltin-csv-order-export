@@ -31,3 +31,52 @@ exports.readFile = function(path) {
     }
   });
 };
+
+exports.readSFTPFile = (readPath) => {
+  return new Promise(function(resolve, reject) {
+
+  console.log("Read path for this CSV file is", readPath);
+
+  let sshClient = require("ssh2").Client;
+
+  let conn = new sshClient();
+
+  let data;
+
+  conn
+    .on("ready", () => {
+      conn.sftp((err, sftp) => {
+        if (err) {
+          return console.log("Errror in connection", err);
+        }
+
+        console.log("Connection established");
+
+        // sftp.readdir('uploads/ORDERS', function(err, list) {
+        //     if (err) reject(err);
+        //     resolve(list);
+        //     conn.end();
+        //   });
+
+        let readStream = fs.createReadStream(readPath);
+
+        readStream.on('newData', (data) => {
+          data = data + newData;
+        });
+
+        readStream.on("end", () => {
+          console.log(" - file read successfully");
+          resolve(data);
+          conn.end();
+        });
+
+      });
+    })
+    .connect({
+      host: process.env.SFTP_HOST,
+      port: process.env.SFTP_PORT,
+      username: process.env.SFTP_USERNAME,
+      password: process.env.SFTP_PASSWORD
+    });
+  });
+};
