@@ -63,9 +63,7 @@ exports.readSFTPFile = readPath => {
           if (stats.size === 0) {
             console.log("file is empty");
             resolve(['"2000-01-01T00:00:00.000Z"', true]);
-          }
-
-          else {
+          } else {
             let readStream = sftp.createReadStream(readPath);
 
             readStream.on("data", data => {
@@ -75,11 +73,11 @@ exports.readSFTPFile = readPath => {
             readStream.on("end", () => {
               console.log(" - file read successfully");
 
-                var lines = streamedData.trim().split("\n");
-                var lastLine = lines.slice(-1)[0];
-                var fields = lastLine.split(",");
-                var timeField = fields.slice(2)[0];
-                resolve([timeField, false]);
+              var lines = streamedData.trim().split("\n");
+              var lastLine = lines.slice(-1)[0];
+              var fields = lastLine.split(",");
+              var timeField = fields.slice(2)[0];
+              resolve([timeField, false]);
 
               conn.end();
             });
@@ -96,27 +94,24 @@ exports.readSFTPFile = readPath => {
 };
 
 exports.checkForDuplicates = function solution(csv) {
-
   return new Promise(function(resolve, reject) {
+    var lines = csv.split(/\r?\n/g);
 
-  var lines = csv.split(/\r?\n/g);
-  
-  var counts = {};
-  var multiples = {};
-  
-  for (var i=0, ii=lines.length; i<ii; i++)
-  {
-    var splt = lines[i].split(/\s*\|\s*/g);
-    var val = splt[0];
-    
-    if (!counts[val]) {
-      counts[val] = 1;
-    } else {
-      counts[val]++;
-      multiples[val] = counts[val];
+    var counts = {};
+    var multiples = {};
+
+    for (var i = 0, ii = lines.length; i < ii; i++) {
+      var splt = lines[i].split(/\s*\|\s*/g);
+      var val = splt[0];
+
+      if (!counts[val]) {
+        counts[val] = 1;
+      } else {
+        counts[val]++;
+        multiples[val] = counts[val];
+      }
     }
-  }
-     
-  resolve(multiples);
-  })
+
+    resolve(multiples);
+  });
 };
