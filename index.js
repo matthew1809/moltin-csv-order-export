@@ -27,7 +27,10 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
   if (orders.data) {
     total = orders.meta.results.total;
 
-    PageOffsetCounter = PageOffsetCounter + process.env.MOLTIN_PAGE_LIMIT || 50;
+    PageOffsetCounter =
+      PageOffsetCounter + parseInt(process.env.MOLTIN_PAGE_LIMIT) || 50;
+
+    console.log("PageOffsetCounter is now", PageOffsetCounter);
 
     console.log(
       "First retrieved order from moltin was created at",
@@ -40,20 +43,18 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
     var counter = 0;
     let trimmedTime = time.slice(1, 24);
 
-    if (
-      new Date(orders.data[0].meta.timestamps.created_at) >
-      new Date(trimmedTime)
-    ) {
-      console.log(
-        "Page total is",
-        orders.meta.page.total,
-        "\nCurrent page is",
-        orders.meta.page.current
-      );
+    console.log(
+      "Page total is",
+      orders.meta.page.total,
+      "\nCurrent page is",
+      orders.meta.page.current
+    );
 
-      // because we only filter by date not time, we need to check that the orders are created after the time of the latest order in the csv
-      await orders.data.forEach(async function(order, index) {
-        await sleep(1000 * index);
+    // because we only filter by date not time, we need to check that the orders are created after the time of the latest order in the csv
+    await orders.data.forEach(async function(order, index) {
+      if (new Date(order.meta.timestamps.created_at) > new Date(trimmedTime)) {
+        //console.log('moltin order date is',new Date(order.meta.timestamps.created_at),'\nLast order in CSV is', new Date(trimmedTime));
+        await sleep(2000 * index);
 
         var transactions = await moltinFunctions.getTransactions(order);
 
@@ -70,64 +71,56 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
 
         counter++;
 
-        console.log(counter);
-        console.log(orders.data.length);
+        // console.log(counter);
+        // console.log(orders.data.length);
+      } else {
+        console.log("order is older than the last CSV order");
+      }
 
-        if (orders.data.length === counter) {
-          console.log("all orders processed");
-          orders.data = trimmedOrders;
+      if (orders.data.length === counter) {
+        console.log("all orders processed");
+        orders.data = trimmedOrders;
 
-          moltinFunctions
-            // sends orders and their items to be formatted and associated correctly
-            .formatOrders(orders, orders.included.items)
-            .then(formattedOrders => {
-              toCSV
-                .convertProcess(
-                  formattedOrders,
-                  toCSV.StitchLabsOrderFields,
-                  process.env.SFTP_ORDERS,
-                  headers
-                )
-                .then(result => {
-                  console.log(PageOffsetCounter, total);
-                  // if there are still orders in Moltin to fetch
-                  if (PageOffsetCounter < total) {
-                    setTimeout(function() {
-                      console.log(
-                        "fetching next page of orders, created after",
-                        time
-                      );
-                      moltinFunctions.GetOrders(PageOffsetCounter, time, false);
-                    }, 2000);
-                  } else {
-                    console.log("fetched all orders, uploading now");
-                    // upload.upload(
-                    //   "./csv/line_items.csv",
-                    //   "./uploads/ORDERS/line_items.csv"
-                    // );
-                    // upload.upload(
-                    //   "./csv/orders.csv",
-                    //   "./uploads/ORDERS/orders.csv"
-                    // );
+        moltinFunctions
+          // sends orders and their items to be formatted and associated correctly
+          .formatOrders(orders, orders.included.items)
+          .then(formattedOrders => {
+            toCSV
+              .convertProcess(
+                formattedOrders,
+                toCSV.StitchLabsOrderFields,
+                process.env.SFTP_ORDERS,
+                headers
+              )
+              .then(result => {
+                console.log(PageOffsetCounter, total);
+                // if there are still orders in Moltin to fetch
+                if (PageOffsetCounter < total) {
+                  setTimeout(function() {
+                    console.log(
+                      "fetching next page of orders, created after",
+                      time
+                    );
+                    moltinFunctions.GetOrders(PageOffsetCounter, time, false);
+                  }, 2000);
+                } else {
+                  console.log("fetched all orders");
 
-                    // fs.readFile("./csv/orders.csv", "utf-8", function(err, data) {
+                  // fs.readFile("./csv/orders.csv", "utf-8", function(err, data) {
 
-                    //   if (err) {console.log(err)};
+                  //   if (err) {console.log(err)};
 
-                    //   fromCSV.checkForDuplicated(data).then((duplicates) => {
-                    //     console.log('duplicates are', duplicates);
-                    //   }).catch((e) => {
-                    //     console.log(e);
-                    //   })
-                    // })
-                  }
-                });
-            });
-        }
-      });
-    } else {
-      console.log("all orders in CSV are up to date");
-    }
+                  //   fromCSV.checkForDuplicates(data).then((duplicates) => {
+                  //     console.log('duplicates are', duplicates);
+                  //   }).catch((e) => {
+                  //     console.log(e);
+                  //   })
+                  // })
+                }
+              });
+          });
+      }
+    });
   } else {
     console.log("no results");
   }
