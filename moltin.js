@@ -102,12 +102,11 @@ exports.itemsLookup = async function(order, items) {
 };
 
 // given a timestamp and offset, fetches orders created after that timestamp, and with that offset
-exports.GetOrders = async function(PageOffsetCounter, time, headers) {
+exports.GetOrders = async function(PageOffsetCounter, datetime, headers) {
   console.log("PageOffsetCounter is", PageOffsetCounter);
 
-  let formattedTime = time.slice(1, 24);
+  let date = datetime.substring(0, datetime.indexOf('T'));
 
-  let date = time.slice(0, 10);
   let PageLimit = process.env.MOLTIN_PAGE_LIMIT || 50;
   let total = 0;
 
@@ -123,7 +122,7 @@ exports.GetOrders = async function(PageOffsetCounter, time, headers) {
     .Offset(PageOffsetCounter)
     .All()
     .then(orders => {
-      return index.process(orders, PageOffsetCounter, time, headers);
+      return index.process(orders, PageOffsetCounter, date, headers);
     })
     .catch(e => console.log(e));
 };
