@@ -38,8 +38,22 @@ const GetProducts = function(PageOffsetCounter, productsArray) {
 
           return GetProducts(PageOffsetCounter, productsArray);
         } else {
-          console.log("finished processing");
-          return Promise.resolve(productsArray);
+          console.log("no more pages left to fetch");
+
+          let productsLeft = products.meta.results.all - (PageOffsetCounter-100);
+          let productsLeftCounter = 0;
+
+          console.log(productsLeft);
+            products.data.forEach(function(product) {
+             product.price = product.meta.display_price.with_tax.amount / 100;
+             productsArray.push(product);
+              productsLeftCounter++
+           });
+          
+          if(productsLeftCounter === productsLeft) {
+            console.log("finished processing");
+            return Promise.resolve(productsArray);
+          }
         }
       })
       .then(products => resolve(products))
