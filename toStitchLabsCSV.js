@@ -56,81 +56,75 @@ let StitchLabsOrderItemFields = [
 ];
 
 // given orders, adds any tax or promotion values for each and returns them
-exports.checkOrders = function(orders) {
-  return new Promise(function(resolve, reject) {
-    let checkedOrders = [];
+exports.checkOrders = async function(orders) {
+  let checkedOrders = [];
 
-    orders.forEach(function(order) {
-      checkForTaxOrPromotion(order).then(order => {
-        checkedOrders.push(order);
+  for (const order of orders) {
+    let checkedOrder = await checkForTaxOrPromotion(order);
+    checkedOrders.push(checkedOrder);
 
-        if (checkedOrders.length === orders.length) {
-          console.log("all orders are finished formatting");
-          resolve(checkedOrders);
-        }
-      });
-    });
-  });
+    if (checkedOrders.length === orders.length) {
+      console.log("checkOrders is finished");
+
+      return checkedOrders;
+    }
+  }
 };
 
 /* given a single order, looks at its items to check for a negative priced item (promotion)
 or an item with a sku of "tax amount" (tax), appends those values to the order under fields "promotion"
 and "tax" before returning the order. If it doesn't find any items matching the criteria, 
 it returns the orders as is*/
-const checkForTaxOrPromotion = function(order) {
-  return new Promise(function(resolve, reject) {
-    let items = order.relationships.items;
-    order.subtotal = order.meta.display_price.with_tax.amount / 100;
+const checkForTaxOrPromotion = async function(order) {
+  let items = order.relationships.items;
+  order.subtotal = order.meta.display_price.with_tax.amount / 100;
 
-    items.forEach(function(item) {
-      if (item.sku === "tax_amount") {
-        order.tax = item.unit_price.amount / 100;
-        order.subtotal =
-          order.meta.display_price.with_tax.amount / 100 - order.tax;
+  for (const item of items) {
+    if (item.sku === "tax_amount") {
+      order.tax = item.unit_price.amount / 100;
+      order.subtotal =
+        order.meta.display_price.with_tax.amount / 100 - order.tax;
 
-        resolve(order);
-      } else if (Math.sign(item.unit_price.amount) === -1) {
-        order.promotion = Math.abs(item.unit_price.amount / 100);
-        resolve(order);
-      } else {
-        resolve(order);
-      }
-    });
-  });
-};
-
-const convert = function(items, fields, fileName, headers) {
-  return new Promise(function(resolve, reject) {
-    try {
-      let Parser = new Json2csvParser({ fields: fields, header: headers });
-
-      let csvString = Parser.parse(items) + "\r\n";
-
-      toSFTPFile(csvString, fileName);
-
-      resolve(csvString);
-    } catch (err) {
-      console.log(err);
-      reject(err);
+      return order;
+    } else if (Math.sign(item.unit_price.amount) === -1) {
+      order.promotion = Math.abs(item.unit_price.amount / 100);
+      return order;
+    } else {
+      return order;
     }
-  });
+  }
 };
 
-exports.convertProcess = (orders, fields, fileName, headers) => {
-  return new Promise(function(resolve, reject) {
-    exports.checkOrders(orders[0]).then(checkedOrders => {
-      convert(checkedOrders, fields, fileName, headers).then(result => {
-        convert(
-          orders[1],
-          StitchLabsOrderItemFields,
-          process.env.SFTP_ORDER_ITEMS,
-          headers
-        ).then(result => {
-          resolve("result");
-        });
-      });
-    });
-  });
+const convert = async function(items, fields, fileName, headers) {
+  try {
+    let Parser = await new Json2csvParser({ fields: fields, header: headers });
+
+    let csvString = (await Parser.parse(items)) + "\r\n";
+
+    let uploaded = await toSFTPFile(csvString, fileName);
+
+    return csvString;
+    
+  } catch (err) {
+    console.log(err);
+    return err;
+  }
+};
+
+exports.convertProcess = async (orders, fields, fileName, headers) => {
+  let checkedOrders = await exports.checkOrders(orders[0]);
+
+  let convertOrders = await convert(checkedOrders, fields, fileName, headers);
+
+  let convertOrderItems = await convert(
+    orders[1],
+    StitchLabsOrderItemFields,
+    process.env.SFTP_ORDER_ITEMS,
+    headers
+  );
+
+  console.log("convertProcess is finished");
+  return([convertOrders, convertOrderItems]);
 };
 
 const toFile = function(data, fileName) {
@@ -140,24 +134,24 @@ const toFile = function(data, fileName) {
   });
 };
 
-const toSFTPFile = function(content, path) {
-  return new Promise(function(resolve, reject) {
+const toSFTPFile = async function(content, path) {
+
     console.log("Upload path for this CSV file is", path);
 
     let sshClient = require("ssh2").Client;
 
-    let conn = new sshClient();
+    let conn = await new sshClient();
 
-    conn
-      .on("ready", () => {
-        conn.sftp((err, sftp) => {
+    await conn
+      .on("ready", async () => {
+        conn.sftp(async (err, sftp) => {
           if (err) {
             return console.log("Errror in connection", err);
           }
 
           console.log("Connection established");
 
-          let stats = sftp.stat(path, function(err, stats) {
+          let stats = await sftp.stat(path, async function(err, stats) {
             if (err) {
               console.log(err);
             }
@@ -165,13 +159,13 @@ const toSFTPFile = function(content, path) {
             if (stats.size === 0) {
               console.log("file at path ", path, " is empty");
 
-              let writeStream = sftp.createWriteStream(path);
+              let writeStream = await sftp.createWriteStream(path);
               console.log("writing data to path ", path);
               writeStream.end(content);
 
-              writeStream.on("close", () => {
+              await writeStream.on("close", () => {
                 console.log(" - file transferred succesfully to path ", path);
-                resolve("- file transferred succesfully to path ", path);
+                return("- file transferred succesfully to path ", path);
                 conn.end();
               });
             } else {
@@ -180,21 +174,21 @@ const toSFTPFile = function(content, path) {
               let readStream = sftp.createReadStream(path);
               let fullData = "";
 
-              readStream.on("data", function(data) {
+              await readStream.on("data", function(data) {
                 console.log("read file data at path ", path);
                 let originalData = data.toString("utf8");
                 fullData = originalData + "\n" + content;
               });
 
-              readStream.on("end", function() {
-                let writeStream = sftp.createWriteStream(path);
+              await readStream.on("end", async function() {
+                let writeStream = await sftp.createWriteStream(path);
                 console.log("writing data to path ", path);
-                writeStream.end(fullData);
+                await writeStream.end(fullData);
 
-                writeStream.on("close", () => {
+                await writeStream.on("close", async () => {
                   console.log(" - file transferred succesfully to path ", path);
-                  resolve("- file transferred succesfully to path ", path);
-                  conn.end();
+                  await conn.end();
+                  return("toStitchLabsCSV is finished");
                 });
               });
             }
@@ -207,5 +201,4 @@ const toSFTPFile = function(content, path) {
         username: process.env.SFTP_USERNAME,
         password: process.env.SFTP_PASSWORD
       });
-  });
 };

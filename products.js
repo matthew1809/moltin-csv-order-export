@@ -11,50 +11,44 @@ const Moltin = moltin.gateway({
 });
 
 const processProducts = function() {
-  GetProducts(0, []).then((productsArray) => {
-    convert(productsArray, fields)
-    .then((csvString) => {
+  GetProducts(0, []).then(productsArray => {
+    convert(productsArray, fields).then(csvString => {
       console.log(csvString);
-      toSFTPFile(csvString, 'uploads/LISTINGS/listings.csv');
-    })
-  })
+      toSFTPFile(csvString, "uploads/LISTINGS/listings.csv");
+    });
+  });
 };
-
 
 const GetProducts = function(PageOffsetCounter, productsArray) {
   return new Promise(function(resolve, reject) {
-
     console.log("PageOffsetCounter is", PageOffsetCounter);
 
-    Moltin.Products
-      .Sort("created_at")
+    Moltin.Products.Sort("created_at")
       .Limit(100)
       .Offset(PageOffsetCounter)
       .All()
       .then(products => {
-
         PageOffsetCounter = PageOffsetCounter + 100;
 
-        if(PageOffsetCounter < products.meta.results.all) {
+        if (PageOffsetCounter < products.meta.results.all) {
           products.data.forEach(function(product) {
-             product.price = product.meta.display_price.with_tax.amount/100;
-             productsArray.push(product);
-          })
+            product.price = product.meta.display_price.with_tax.amount / 100;
+            productsArray.push(product);
+          });
 
           return GetProducts(PageOffsetCounter, productsArray);
         } else {
-          console.log('finished processing');
+          console.log("finished processing");
           return Promise.resolve(productsArray);
         }
       })
       .then(products => resolve(products))
-      .catch((e) => {
+      .catch(e => {
         console.log(e);
         reject(e);
       });
-    });
-}
-
+  });
+};
 
 // Variables
 let fields = [
@@ -66,9 +60,7 @@ let fields = [
   { label: "description", value: "description" }
 ];
 
-
-
-const convert = function(items, fields ) {
+const convert = function(items, fields) {
   return new Promise(function(resolve, reject) {
     try {
       let Parser = new Json2csvParser({ fields: fields });
@@ -83,8 +75,6 @@ const convert = function(items, fields ) {
   });
 };
 
-
-
 const toSFTPFile = function(content, path) {
   return new Promise(function(resolve, reject) {
     console.log("Upload path for this CSV file is", path);
@@ -96,7 +86,6 @@ const toSFTPFile = function(content, path) {
     conn
       .on("ready", () => {
         conn.sftp((err, sftp) => {
-          
           if (err) {
             return console.log("Errror in connection", err);
           }
@@ -128,6 +117,5 @@ const toSFTPFile = function(content, path) {
       });
   });
 };
-
 
 processProducts();
