@@ -55,7 +55,7 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
 
     let trimmedOrders = [];
     var counter = 0;
-    let trimmedTime = time.slice(1, 24);
+    let trimmedTime = time.slice(1, 25);
 
     console.log(
       "Page total is",
@@ -64,10 +64,14 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
       orders.meta.page.current
     );
 
+
+
     // because we only filter by date not time, we need to check that the orders are created after the time of the latest order in the csv
     for (const order of orders.data) {
+
       if (new Date(order.meta.timestamps.created_at) > new Date(trimmedTime)) {
-        //console.log('moltin order date is',new Date(order.meta.timestamps.created_at),'\nLast order in CSV is', new Date(trimmedTime));
+        
+        console.log('moltin order date is',new Date(order.meta.timestamps.created_at),'\nLast order in CSV is', new Date(trimmedTime));
         //await sleep(2000);
 
         let transactions = await moltinFunctions.getTransactions(order);

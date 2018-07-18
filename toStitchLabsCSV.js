@@ -1,7 +1,8 @@
 const Json2csvParser = require("json2csv").Parser;
 var exports = (module.exports = {});
-var moltinFunctions = require("./moltin.js");
-var fs = require("fs");
+const moltinFunctions = require("./moltin.js");
+const fs = require("fs");
+const sshClient = require("ssh2").Client;
 
 exports.StitchLabsOrderFields = [
   { label: "channel_order_id", value: "id" },
@@ -101,10 +102,14 @@ const convert = async function(items, fields, fileName, headers) {
 
     let csvString = (await Parser.parse(items)) + "\r\n";
 
-    let uploaded = await toSFTPFile(csvString, fileName);
+    let uploaded = await toSFTPFile(csvString, fileName)
+    .then((result) => {
+      return csvString;
+    }).catch((e) => {
+      console.log(e);
+    })
 
-    return csvString;
-    
+
   } catch (err) {
     console.log(err);
     return err;
@@ -134,24 +139,24 @@ const toFile = function(data, fileName) {
   });
 };
 
-const toSFTPFile = async function(content, path) {
+const toSFTPFile = function(content, path) {
+  return new Promise(function(resolve, reject) {
 
     console.log("Upload path for this CSV file is", path);
 
-    let sshClient = require("ssh2").Client;
+    let conn = new sshClient();
 
-    let conn = await new sshClient();
+    conn.on("ready", async () => {
 
-    await conn
-      .on("ready", async () => {
         conn.sftp(async (err, sftp) => {
           if (err) {
             return console.log("Errror in connection", err);
           }
 
           console.log("Connection established");
+          console.log('conent to write is', content);
 
-          let stats = await sftp.stat(path, async function(err, stats) {
+          let stats = sftp.stat(path, async function(err, stats) {
             if (err) {
               console.log(err);
             }
@@ -159,13 +164,13 @@ const toSFTPFile = async function(content, path) {
             if (stats.size === 0) {
               console.log("file at path ", path, " is empty");
 
-              let writeStream = await sftp.createWriteStream(path);
+              let writeStream = sftp.createWriteStream(path);
               console.log("writing data to path ", path);
               writeStream.end(content);
 
-              await writeStream.on("close", () => {
+              writeStream.on("close", () => {
                 console.log(" - file transferred succesfully to path ", path);
-                return("- file transferred succesfully to path ", path);
+                resolve("- file transferred succesfully to path ", path);
                 conn.end();
               });
             } else {
@@ -174,21 +179,21 @@ const toSFTPFile = async function(content, path) {
               let readStream = sftp.createReadStream(path);
               let fullData = "";
 
-              await readStream.on("data", function(data) {
+              readStream.on("data", function(data) {
                 console.log("read file data at path ", path);
                 let originalData = data.toString("utf8");
                 fullData = originalData + "\n" + content;
               });
 
-              await readStream.on("end", async function() {
-                let writeStream = await sftp.createWriteStream(path);
+              readStream.on("end", async function() {
+                let writeStream = sftp.createWriteStream(path);
                 console.log("writing data to path ", path);
-                await writeStream.end(fullData);
+                writeStream.end(fullData);
 
-                await writeStream.on("close", async () => {
+                writeStream.on("close", async () => {
                   console.log(" - file transferred succesfully to path ", path);
-                  await conn.end();
-                  return("toStitchLabsCSV is finished");
+                  conn.end();
+                  resolve("toStitchLabsCSV is finished");
                 });
               });
             }
@@ -201,4 +206,5 @@ const toSFTPFile = async function(content, path) {
         username: process.env.SFTP_USERNAME,
         password: process.env.SFTP_PASSWORD
       });
+  });
 };
