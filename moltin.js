@@ -1,25 +1,88 @@
-var exports = (module.exports = {});
+var access_token;
+var exports         = (module.exports = {});
+var qs              = require("querystring");
 var toStitchLabsCSV = require("./toStitchLabsCSV");
-var toCSV = require("./toCSV");
+var http            = require("https");
+var toCSV           = require("./toCSV");
+const index         = require("./index");
 require("dotenv").config();
-const index = require("./index");
 
-// moltin SDK setup
-const moltin = require("./js-sdk");
+function auth() {
+  return new Promise((resolve, reject) => {
+    var req = http.request({
+      "method": "POST",
+      "hostname": "api.moltin.com",
+      "path": "/oauth/access_token",
+      "headers": {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+      }
+    }, (res) => {
+      var chunks = [];
+      res.on("data", (chunk) => {
+        chunks.push(chunk);
+      });
+      res.on("end", () => {
+        var body = Buffer.concat(chunks);
+        body = body.toString();
+        resolve(body)
+      });
+    });
+    req.write(qs.stringify({
+      client_id: process.env.CLIENT_ID,
+      client_secret: process.env.CLIENT_SECRET,
+      grant_type: 'client_credentials'
+    }));
+    return req.end();
+  });
+}
 
-const Moltin = moltin.gateway({
-  client_id: process.env.CLIENT_ID,
-  client_secret: process.env.CLIENT_SECRET,
-  host: process.env.HOST || "api.moltin.com"
-});
-
-let LastPageOffset = 0;
+async function get(url) {
+  if (!access_token) {
+    let res = await auth();
+    access_token = JSON.parse(res).access_token;
+  }
+  return new Promise((resolve, reject) => {
+    var request = http.request({
+        "method": "GET",
+        "hostname": "api.moltin.com",
+        "path": url,
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer " + access_token,
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+        }
+      },
+      (res) => {
+        res.setEncoding('utf8');
+        if (res.statusCode >= 400) {
+          return reject(res.statusMessage);
+        }
+        let data = '';
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        res.on('end', () => {
+          if (typeof data === 'string') {
+            data = JSON.parse(data);
+          }
+          resolve(data);
+        });
+      }
+    );
+    request.on('error', (e) => {
+      console.log(e)
+      reject(e);
+    });
+    return request.end();
+  });
+}
 
 exports.getTransactions = function(order) {
   return new Promise((resolve, reject) => {
-    //resolve(order);
-    Moltin.Transactions.All({ order: order.id })
-
+    get('/v2/orders/' + order.id + '/transactions')
       .then(transactions => {
         transactions.data.forEach(function(transaction) {
           if (
@@ -43,30 +106,24 @@ exports.getTransactions = function(order) {
 exports.formatOrders = async function(orders, items) {
   let formattedOrders = [];
   let formattedItems = [];
-
   for (const order of orders.data) {
     let orderWithItems = await exports.itemsLookup(
       order,
       orders.included.items
     );
-
-    orderWithItems.price =
-      orderWithItems.meta.display_price.with_tax.amount / 100;
-
+    orderWithItems.price = orderWithItems.meta.display_price.with_tax.amount / 100;
     formattedOrders.push(orderWithItems);
-
     for (const item of orderWithItems.relationships.items) {
       if (
         item.sku !== "tax_amount" &&
         Math.sign(item.unit_price.amount) !== -1
       ) {
+        // @matt why is await being used here?
         await formattedItems.push(item);
       }
     }
-
     if (formattedOrders.length === orders.data.length) {
       console.log("formatOrders is finished");
-
       return [formattedOrders, formattedItems];
     }
   }
@@ -75,8 +132,7 @@ exports.formatOrders = async function(orders, items) {
 exports.itemsLookup = async function(order, items) {
   // initialise our counter
   var itemsProcessed = 0;
-  let itemsArray = [];
-
+  let itemsArray     = [];
   //for each of the orders related items
   for (const item of order.relationships.items.data) {
     // ID for the orders item
@@ -88,41 +144,26 @@ exports.itemsLookup = async function(order, items) {
       if (item.id === id) {
         item.orderID = order.id;
         item.price = item.unit_price.amount / 100;
-        await itemsArray.push(item);
+        itemsArray.push(item);
       }
     }
-
     // if there are no order items left to process
     if (itemsProcessed === order.relationships.items.data.length) {
       order.relationships.items = itemsArray;
-
       return order;
     }
   }
 };
 
 // given a timestamp and offset, fetches orders created after that timestamp, and with that offset
-exports.GetOrders = async function(PageOffsetCounter, datetime, headers) {
-  console.log("PageOffsetCounter is", PageOffsetCounter);
-
-  let date = datetime.substring(0, datetime.indexOf('T'));
-
-  let PageLimit = process.env.MOLTIN_PAGE_LIMIT || 50;
-  let total = 0;
-
-  console.log("we are getting orders created after", date);
-
-  await Moltin.Orders.Filter({
-    eq: { payment: "paid" },
-    gt: { created_at: date }
-  })
-    .Sort("created_at")
-    .With("items")
-    .Limit(PageLimit)
-    .Offset(PageOffsetCounter)
-    .All()
-    .then(orders => {
-      return index.process(orders, PageOffsetCounter, date, headers);
-    })
-    .catch(e => console.log(e));
+exports.GetOrders = async function(PageOffsetCounter, date, headers) {
+  return new Promise((resolve, reject) => {
+    console.log("PageOffsetCounter is", PageOffsetCounter);
+    let PageLimit = process.env.MOLTIN_PAGE_LIMIT || 50;
+    let total     = 0;
+    console.log("we are getting orders created after", date);
+    get(`/v2/orders?filter=eq(payment,paid):gt(created_at,${date})&sort=created_at&include=items&page[limit]=${PageLimit}&page[offset]=${PageOffsetCounter}`)
+      .then(resolve)
+      .catch(reject);
+  });
 };
