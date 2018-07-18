@@ -55,7 +55,7 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
 
     let trimmedOrders = [];
     var counter = 0;
-    let trimmedTime = time.slice(1, 25);
+    let trimmedTime = time.slice(0, 25);
 
     console.log(
       "Page total is",
@@ -64,14 +64,13 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
       orders.meta.page.current
     );
 
-
-
     // because we only filter by date not time, we need to check that the orders are created after the time of the latest order in the csv
     for (const order of orders.data) {
 
+      console.log('moltin order date is',new Date(order.meta.timestamps.created_at),'\nLast order in CSV is', new Date(trimmedTime));
+
       if (new Date(order.meta.timestamps.created_at) > new Date(trimmedTime)) {
-        
-        console.log('moltin order date is',new Date(order.meta.timestamps.created_at),'\nLast order in CSV is', new Date(trimmedTime));
+        console.log(order.id, "is new and will be processed");
         //await sleep(2000);
 
         let transactions = await moltinFunctions.getTransactions(order);
@@ -90,10 +89,14 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
         counter++;
       } else {
         console.log("order is older than the last CSV order");
+        counter++;
       }
 
       if (orders.data.length === counter) {
         console.log("all orders processed");
+
+        
+        if(trimmedOrders.length > 0) {
         orders.data = trimmedOrders;
 
         try {
@@ -135,6 +138,21 @@ exports.process = async (orders, PageOffsetCounter, time, headers) => {
           //   })
           // })
         }
+      } else {
+        console.log("there were no new orders on this page");
+
+        // if there are still orders in Moltin to fetch
+        if (PageOffsetCounter < total) {
+    
+            console.log("fetching next page of orders, created after", time);
+            return await moltinFunctions.GetOrders(PageOffsetCounter, time, false);
+
+        } else {
+          return(console.log("fetched all orders"));
+
+        }
+
+      }
       }
     }
   } else {
