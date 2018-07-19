@@ -122,7 +122,7 @@ exports.GetOrders = async function(PageOffsetCounter, datetime, headers) {
     .Offset(PageOffsetCounter)
     .All()
     .then(orders => {
-      return index.process(orders, PageOffsetCounter, date, headers);
+      return index.process(orders, PageOffsetCounter, datetime, headers);
     })
     .catch(e => console.log(e));
 };
