@@ -1,8 +1,6 @@
-var exports = (module.exports = {});
+var exports  = (module.exports = {});
 var json2csv = require("json2csv").parse;
-var moltinData = require("./orders.js");
-var moltinFunctions = require("./moltin.js");
-var fs = require("fs");
+var fs       = require("fs");
 
 exports.ordersFields = [
   "type",
@@ -27,11 +25,12 @@ exports.ordersFields = [
 
 exports.convert = function(data, fields, fileName) {
   return new Promise(function(resolve, reject) {
-    const opts = { fields, unwind: ["relationships.items"] };
-
+    const opts = {
+      fields,
+      unwind: ["relationships.items"]
+    };
     try {
       var result = json2csv(data, opts);
-
       toFile(result, fileName);
       resolve(result);
     } catch (err) {
