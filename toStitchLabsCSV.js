@@ -182,7 +182,7 @@ const toSFTPFile = function(content, path) {
               readStream.on("data", function(data) {
                 console.log("read file data at path ", path);
                 let originalData = data.toString("utf8");
-                fullData = originalData + "\n" + content;
+                fullData = originalData + content;
               });
 
               readStream.on("end", async function() {
