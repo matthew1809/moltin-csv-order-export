@@ -10,7 +10,7 @@ exports.myHandler = async function(event, context, callback) {
     let finished = await fromCSV.readSFTPFile(process.env.SFTP_ORDERS)
     let date     = finished[0].substring(0, finished[0].indexOf('T'));
     let orders   = await moltinFunctions.GetOrders(0, date, finished[1]);
-    return exports.process(orders, 0, date);
+    return exports.process(orders, 0, date, false);
   } catch (e) {
     console.log(e);
     return e;
