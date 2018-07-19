@@ -9,8 +9,8 @@ exports.myHandler = async function(event, context, callback) {
     // reads orders CSV file to see where we should start getting orders from in Moltin
     let finished = await fromCSV.readSFTPFile(process.env.SFTP_ORDERS)
     let date     = finished[0].substring(0, finished[0].indexOf('T'));
-    let orders   = await moltinFunctions.GetOrders(0, date, finished[1]);
-    return exports.process(orders, 0, date, false);
+    let orders   = await moltinFunctions.GetOrders(0, date);
+    return exports.process(orders, 0, finished[0], date, false);
   } catch (e) {
     console.log(e);
     return e;
@@ -18,7 +18,7 @@ exports.myHandler = async function(event, context, callback) {
 };
 
 // given orders and an offset, processes the orders, updates the offset and asks for the next batch of orders
-exports.process = async(orders, PageOffsetCounter, time, headers) => {
+exports.process = async(orders, PageOffsetCounter, time, trimmedTime, headers) => {
   console.log("PageOffsetCounter is", PageOffsetCounter);
   // if there are orders in the results from Moltin
   if (typeof orders.data !== "undefined" && orders.data.length > 0) {
@@ -34,7 +34,6 @@ exports.process = async(orders, PageOffsetCounter, time, headers) => {
     );
     let trimmedOrders = [];
     var counter       = 0;
-    let trimmedTime   = time.slice(0, 25);
     console.log(
       "Page total is",
       orders.meta.page.total,
@@ -43,8 +42,8 @@ exports.process = async(orders, PageOffsetCounter, time, headers) => {
     );
     // because we only filter by date not time, we need to check that the orders are created after the time of the latest order in the csv
     for (const order of orders.data) {
-      console.log('moltin order date is', new Date(order.meta.timestamps.created_at), '\nLast order in CSV is', new Date(trimmedTime));
-      if (new Date(order.meta.timestamps.created_at) > new Date(trimmedTime)) {
+      console.log('moltin order date is', new Date(order.meta.timestamps.created_at), '\nLast order in CSV is', new Date(time));
+      if (new Date(order.meta.timestamps.created_at) > new Date(time)) {
         console.log(order.id, "is new and will be processed");
         let transactions = await moltinFunctions.getTransactions(order);
         let result       = transactions[0];
@@ -95,7 +94,7 @@ exports.process = async(orders, PageOffsetCounter, time, headers) => {
           // if there are still orders in Moltin to fetch
           if (PageOffsetCounter < total) {
             console.log("fetching next page of orders, created after", time);
-            let orders = await moltinFunctions.GetOrders(PageOffsetCounter, time, false);
+            let orders = await moltinFunctions.GetOrders(PageOffsetCounter, trimmedTime, false);
             return orders;
           } else {
             return (console.log("fetched all orders"));

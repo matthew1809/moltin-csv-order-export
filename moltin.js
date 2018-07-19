@@ -156,7 +156,7 @@ exports.itemsLookup = async function(order, items) {
 };
 
 // given a timestamp and offset, fetches orders created after that timestamp, and with that offset
-exports.GetOrders = async function(PageOffsetCounter, date, headers) {
+exports.GetOrders = async function(PageOffsetCounter, date) {
   return new Promise((resolve, reject) => {
     console.log("PageOffsetCounter is", PageOffsetCounter);
     let PageLimit = process.env.MOLTIN_PAGE_LIMIT || 50;
