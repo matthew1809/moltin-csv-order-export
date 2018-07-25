@@ -1,5 +1,9 @@
 var exports = (module.exports = {});
-var fs      = require("fs");
+
+var json2csv = require("json2csv").parse;
+var moltinFunctions = require("./moltin.js");
+var fs = require("fs");
+
 
 exports.readFile = function(path) {
   return new Promise(function(resolve, reject) {

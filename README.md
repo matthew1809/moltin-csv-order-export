@@ -16,6 +16,13 @@ After matching each order with its items, the script sends the 100 orders to be 
 
 This process is repeated as long as there are more pages of orders in moltin than have been fetched. If we have reached the point where there are no more orders, the script simply stops.
 
+## Initial product upload
+If you're using a third party fulfillment system like Stitchlabs, it expects you to upload your products to the same SFTP server as your orders, so it can match up te products in the orders.
+
+You can run this upload by simply doing `node products.js` from the command line, making sure you are in the root of the project folder.
+
+This process grabs all your moltin products, formats them, and sends them to "uploads/LISTINGS/listings.csv"
+
 ## Todo
 - Write to google sheets instead
 - Make deployable to a system which does not have fs access
