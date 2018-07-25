@@ -115,21 +115,17 @@ or an item with a sku of "tax amount" (tax), appends those values to the order u
 and "tax" before returning the order. If it doesn't find any items matching the criteria, 
 it returns the orders as is*/
 const checkForTaxOrPromotion = async function(order) {
-  let items = order.relationships.items;
-  order.subtotal = order.meta.display_price.with_tax.amount / 100;
+  let items      = order.relationships.items;
+  let tax        = order.taxes_collected ? +order.taxes_collected : 0;
+  order.tax      = order.taxes_collected / 100;
+  order.subtotal = (order.meta.display_price.with_tax.amount - tax) / 100;
   for (const item of items) {
-    if (item.sku === "tax_amount") {
-      order.tax = item.unit_price.amount / 100;
-      order.subtotal =
-        order.meta.display_price.with_tax.amount / 100 - order.tax;
-      return order;
-    } else if (Math.sign(item.unit_price.amount) === -1) {
+    if (Math.sign(item.unit_price.amount) === -1) {
       order.promotion = Math.abs(item.unit_price.amount / 100);
-      return order;
     } else {
-      return order;
     }
   }
+  return order;
 };
 
 const convert = async function(items, fields, fileName, headers) {

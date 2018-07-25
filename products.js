@@ -14,7 +14,7 @@ const processProducts = function() {
   GetProducts(0, []).then(productsArray => {
     convert(productsArray, fields).then(csvString => {
       console.log(csvString);
-      toSFTPFile(csvString, "uploads/LISTINGS/listings.csv");
+      toSFTPFile(csvString, "dev/LISTINGS/listings.csv");
     });
   });
 };

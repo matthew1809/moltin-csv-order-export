@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "@moltin/sdk": "^3.12.1",
     "dotenv": "^6.0.0",
     "fs": "0.0.1-security",
     "json2csv": "^4.1.5",

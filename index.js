@@ -49,10 +49,8 @@ exports.process = async(orders, PageOffsetCounter, time, trimmedTime, headers) =
         let result       = transactions[0];
         let transaction  = transactions[1];
         if (result === true && transaction !== undefined) {
-          order.gateway = transaction.gateway;
-          order.gateway === "manual" ?
-            (order.transaction_id = transaction.affirm_charge_id) :
-            (order.transaction_id = transaction.reference);
+          order.gateway        = transaction.gateway;
+          order.transaction_id = order.gateway === "manual" ? transaction.affirm_charge_id : transaction.reference;
           trimmedOrders.push(order);
         }
         counter++;
@@ -70,8 +68,7 @@ exports.process = async(orders, PageOffsetCounter, time, trimmedTime, headers) =
               orders,
               orders.included.items
             );
-            // @matt this is defined but never used, is await necessary
-            let result = await toCSV.convertProcess(
+            await toCSV.convertProcess(
               formattedOrders,
               toCSV.StitchLabsOrderFields,
               process.env.SFTP_ORDERS,
@@ -84,8 +81,9 @@ exports.process = async(orders, PageOffsetCounter, time, trimmedTime, headers) =
           // if there are still orders in Moltin to fetch
           if (PageOffsetCounter < total) {
             console.log("fetching next page of orders, created after", time);
-            // @matt is await necessary here?
-            return await moltinFunctions.GetOrders(PageOffsetCounter, time, false);
+            let date   = time.substring(0, time.indexOf('T'));
+            let orders = await moltinFunctions.GetOrders(PageOffsetCounter, date);
+            return exports.process(orders, PageOffsetCounter, time, date, false);
           } else {
             return (console.log("fetched all orders"));
           }
@@ -94,8 +92,9 @@ exports.process = async(orders, PageOffsetCounter, time, trimmedTime, headers) =
           // if there are still orders in Moltin to fetch
           if (PageOffsetCounter < total) {
             console.log("fetching next page of orders, created after", time);
-            let orders = await moltinFunctions.GetOrders(PageOffsetCounter, trimmedTime, false);
-            return orders;
+            let date   = time.substring(0, time.indexOf('T'));
+            let orders = await moltinFunctions.GetOrders(PageOffsetCounter, trimmedTime);
+            return exports.process(orders, PageOffsetCounter, time, date, false);
           } else {
             return (console.log("fetched all orders"));
           }

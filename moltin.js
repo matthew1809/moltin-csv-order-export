@@ -111,10 +111,11 @@ exports.formatOrders = async function(orders, items) {
       order,
       orders.included.items
     );
+    // for now we are only whitelisting digits, letters white space and https://stackoverflow.com/a/4374890/1971272
     orderWithItems.price                   = orderWithItems.meta.display_price.with_tax.amount / 100;
-    orderWithItems.shipping_address.line_1 = orderWithItems.shipping_address.line_1.replace("'", "");
-    orderWithItems.shipping_address.line_2 = orderWithItems.shipping_address.line_2.replace("'", "");
-    orderWithItems.shipping_address.city   = orderWithItems.shipping_address.city.replace("'", "");
+    orderWithItems.shipping_address.line_1 = orderWithItems.shipping_address.line_1.replace(/[^\w\s\-]/gi, '');
+    orderWithItems.shipping_address.line_2 = orderWithItems.shipping_address.line_2.replace(/[^\w\s\-]/gi, '');
+    orderWithItems.shipping_address.city   = orderWithItems.shipping_address.city.replace(/[^\w\s\-]/gi, '');
     formattedOrders.push(orderWithItems);
     for (const item of orderWithItems.relationships.items) {
       if (
