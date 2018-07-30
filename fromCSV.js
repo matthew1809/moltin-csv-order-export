@@ -4,69 +4,41 @@ var json2csv = require("json2csv").parse;
 var moltinFunctions = require("./moltin.js");
 var fs = require("fs");
 
-
-exports.readFile = function(path) {
-  return new Promise(function(resolve, reject) {
-    // read the file, check if there is anything in it
-    const stats = fs.statSync(path);
-    // if there's nothing, that means we need to get orders from the beginning of time
-    if (stats.size === 0) {
-      console.log("file is empty");
-      resolve(['"2018-06-15T00:00:00.000Z"', true]);
-    }
-    // if there are orders in the file, that means we need to get orders after the created_at timestamp of the last order in the file
-    else {
-      console.log("some orders already in file");
-      fs.readFile(path, "utf-8", function(err, data) {
-        if (err) reject(err);
-        var lines     = data.trim().split("\n");
-        var lastLine  = lines.slice(-1)[0];
-        var fields    = lastLine.split(",");
-        var timeField = fields.slice(2)[0];
-        resolve([timeField, false]);
-      });
-    }
-  });
-};
-
 exports.readSFTPFile = readPath => {
-  return new Promise(function(resolve, reject) {
+  return new Promise((resolve, reject) => {
     console.log("Read path for this CSV file is", readPath);
     let sshClient = require("ssh2").Client;
     let conn      = new sshClient();
     let streamedData, stats;
     conn
       .on("ready", () => {
-        conn.sftp((err, sftp) => {
+        conn.sftp(async (err, sftp) => {
           if (err) {
             return console.log("Errror in connection", err);
           }
           console.log("Connection established");
-          try {
-            stats = sftp.stat(readPath);
-          } catch(e) {
-            stats = false;
-          }
-          // if there's nothing, that means we need to get orders from the beginning of time
-          if (typeof stats !== 'object') {
-            console.log("file is empty");
-            resolve(['2018-06-15T00:00:00.000Z', true]);
-          } else {
-            let readStream = sftp.createReadStream(readPath);
-            readStream.on("data", data => {
-              streamedData = streamedData + data;
-            });
-            readStream.on("end", () => {
-              console.log(" - file read successfully");
-              var lines     = streamedData.trim().split("\n");
-              var lastLine  = lines.slice(-1)[0];
-              var fields    = lastLine.split(",");
-              var timeField = fields.slice(2)[0];
-              timeField     = timeField.replace(/"/g, "");
-              resolve([timeField, false]);
-              conn.end();
-            });
-          }
+          stats = sftp.stat(readPath, (err, stats) => {
+            // if there's nothing, that means we need to get orders from the beginning of time
+            if (!stats || stats.size === 0) {
+              console.log("file is empty");
+              resolve(['2018-07-25T00:00:00.000Z', true]);
+            } else {
+              let readStream = sftp.createReadStream(readPath);
+              readStream.on("data", data => {
+                streamedData = streamedData + data;
+              });
+              readStream.on("end", () => {
+                console.log(" - file read successfully");
+                var lines     = streamedData.trim().split("\n");
+                var lastLine  = lines.slice(-1)[0];
+                var fields    = lastLine.split(",");
+                var timeField = fields.slice(2)[0];
+                timeField     = timeField.replace(/"/g, "");
+                resolve([timeField, false]);
+                conn.end();
+              });
+            }
+          });
         });
       })
       .connect({
