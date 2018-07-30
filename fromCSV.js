@@ -12,7 +12,7 @@ exports.readFile = function(path) {
     // if there's nothing, that means we need to get orders from the beginning of time
     if (stats.size === 0) {
       console.log("file is empty");
-      resolve(['"2000-01-01T00:00:00.000Z"', true]);
+      resolve(['"2018-06-15T00:00:00.000Z"', true]);
     }
     // if there are orders in the file, that means we need to get orders after the created_at timestamp of the last order in the file
     else {
@@ -34,7 +34,7 @@ exports.readSFTPFile = readPath => {
     console.log("Read path for this CSV file is", readPath);
     let sshClient = require("ssh2").Client;
     let conn      = new sshClient();
-    let streamedData;
+    let streamedData, stats;
     conn
       .on("ready", () => {
         conn.sftp((err, sftp) => {
@@ -42,11 +42,15 @@ exports.readSFTPFile = readPath => {
             return console.log("Errror in connection", err);
           }
           console.log("Connection established");
-          const stats = sftp.stat(readPath);
+          try {
+            stats = sftp.stat(readPath);
+          } catch(e) {
+            stats = false;
+          }
           // if there's nothing, that means we need to get orders from the beginning of time
-          if (stats.size === 0) {
+          if (typeof stats !== 'object') {
             console.log("file is empty");
-            resolve(['2000-01-01T00:00:00.000Z', true]);
+            resolve(['2018-06-15T00:00:00.000Z', true]);
           } else {
             let readStream = sftp.createReadStream(readPath);
             readStream.on("data", data => {

@@ -10,7 +10,7 @@ exports.myHandler = async function(event, context, callback) {
     let finished = await fromCSV.readSFTPFile(process.env.SFTP_ORDERS)
     let date     = finished[0].substring(0, finished[0].indexOf('T'));
     let orders   = await moltinFunctions.GetOrders(0, date);
-    return exports.process(orders, 0, finished[0], date, false);
+    return exports.process(orders, 0, finished[0], date, "channel_order_id,order_date,ship_date,subtotal,total,currency,order_status,customer_first_name,customer_last_name,customer_email,shipping_address_name,shipping_address_street_1,shipping_address_street_2,shipping_address_city,shipping_address_state,shipping_address_country,shipping_address_postal_code,shipping_address_phone,payment_notes,payment_method,tax,discount");
   } catch (e) {
     console.log(e);
     return e;
@@ -24,7 +24,7 @@ exports.process = async(orders, PageOffsetCounter, time, trimmedTime, headers) =
   if (typeof orders.data !== "undefined" && orders.data.length > 0) {
     let total = orders.meta.results.total;
     PageOffsetCounter =
-      PageOffsetCounter + parseInt(process.env.MOLTIN_PAGE_LIMIT) || 50;
+      PageOffsetCounter + (parseInt(process.env.MOLTIN_PAGE_LIMIT) || 50);
     console.log("PageOffsetCounter is now", PageOffsetCounter);
     console.log(
       "First retrieved order from moltin was created at",

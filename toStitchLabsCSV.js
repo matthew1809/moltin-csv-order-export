@@ -184,7 +184,7 @@ const toSFTPFile = function(content, path) {
             if (err) {
               console.log(err);
             }
-            if (stats.size === 0) {
+            if (!stats) {
               console.log("file at path ", path, " is empty");
               let writeStream = sftp.createWriteStream(path);
               console.log("writing data to path ", path);
