@@ -39,10 +39,8 @@ function auth() {
 }
 
 async function get(url) {
-  if (!access_token) {
-    let res = await auth();
-    access_token = JSON.parse(res).access_token;
-  }
+  let res      = await auth();
+  access_token = JSON.parse(res).access_token;
   return new Promise((resolve, reject) => {
     var request = http.request({
         "method": "GET",
