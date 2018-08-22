@@ -1,3 +1,4 @@
+require('dotenv').config()
 var exports           = (module.exports = {});
 const fromCSV         = require("./fromCSV");
 const moltinFunctions = require("./moltin");

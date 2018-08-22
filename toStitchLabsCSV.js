@@ -195,23 +195,13 @@ const toSFTPFile = function(content, path) {
                 conn.end();
               });
             } else {
-              console.log("file at path ", path, " is not empty");
-              let readStream = sftp.createReadStream(path);
-              let fullData = "";
-              readStream.on("data", function(data) {
-                console.log("read file data at path ", path);
-                let originalData = data.toString("utf8");
-                fullData = originalData + content;
-              });
-              readStream.on("end", async function() {
-                let writeStream = sftp.createWriteStream(path);
-                console.log("writing data to path ", path);
-                writeStream.end(fullData);
-                writeStream.on("close", async() => {
-                  console.log(" - file transferred succesfully to path ", path);
-                  conn.end();
-                  resolve("toStitchLabsCSV is finished");
-                });
+              let writeStream = sftp.createWriteStream(path, {flags:'a'});
+              console.log("writing data to path ", path);
+              writeStream.end(content);
+              writeStream.on("close", async() => {
+                console.log(" - file transferred succesfully to path ", path);
+                conn.end();
+                resolve("toStitchLabsCSV is finished");
               });
             }
           });

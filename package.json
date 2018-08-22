@@ -13,7 +13,8 @@
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node -e 'require(\"./index.js\").myHandler()'",
+    "inspect": "node --inspect -e 'require(\"./index.js\").myHandler()'"
   },
   "author": "Matthew Foyle <matt@moltin.com>",
   "license": "ISC"
