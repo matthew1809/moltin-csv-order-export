@@ -114,6 +114,8 @@ exports.formatOrders = async function(orders, items) {
     orderWithItems.shipping_address.line_1 = orderWithItems.shipping_address.line_1.replace(/[^\w\s\-]/gi, '');
     orderWithItems.shipping_address.line_2 = orderWithItems.shipping_address.line_2.replace(/[^\w\s\-]/gi, '');
     orderWithItems.shipping_address.city   = orderWithItems.shipping_address.city.replace(/[^\w\s\-]/gi, '');
+    orderWithItems.customer.name           = orderWithItems.customer.name.replace(/[^\w\s\-]/gi, '');
+
     formattedOrders.push(orderWithItems);
     for (const item of orderWithItems.relationships.items) {
       if (
