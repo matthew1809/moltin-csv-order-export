@@ -32,7 +32,7 @@ exports.readSFTPFile = readPath => {
                 var lines     = streamedData.trim().split("\n");
                 var lastLine  = lines.slice(-1)[0];
                 var fields    = lastLine.split(",");
-                var timeField = fields.slice(2)[0];
+                var timeField = fields.slice(1)[0];
                 timeField     = timeField.replace(/"/g, "");
                 resolve([timeField, false]);
                 conn.end();
